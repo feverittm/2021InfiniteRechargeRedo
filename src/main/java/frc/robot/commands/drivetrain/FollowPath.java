@@ -9,8 +9,8 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.trajectory.Trajectory;
 import edu.wpi.first.wpilibj2.command.CommandBase;
 
-import org.team997coders.spartanlib.helpers.SwerveMixerData;
-import org.team997coders.spartanlib.motion.pathfollower.PathManager;
+import frc.spartanlib.helpers.SwerveMixerData;
+import frc.spartanlib.motion.pathfollower.PathManager;
 
 import frc.robot.Constants;
 import frc.robot.subsystems.DriveTrain;

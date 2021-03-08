@@ -7,17 +7,17 @@
 
 package frc.robot.commands.drivetrain;
 
-import org.team997coders.spartanlib.limelight.LimeLight;
 
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.CommandBase;
 import frc.robot.Robot;
 import frc.robot.subsystems.DriveTrain;
+import frc.robot.subsystems.LimeLight;
 import frc.robot.Constants;
 import frc.robot.OI;
 
-import org.team997coders.spartanlib.controllers.SpartanPID;
-import org.team997coders.spartanlib.helpers.PIDConstants;
+import frc.spartanlib.controllers.SpartanPID;
+import frc.spartanlib.helpers.PIDConstants;
 import java.util.concurrent.TimeUnit;
 
 public class AutoFaceTargetAndDrive extends CommandBase {
@@ -74,8 +74,7 @@ public class AutoFaceTargetAndDrive extends CommandBase {
   public void end(boolean interrupted) {
     if (interrupted) { System.out.println("AutoFaceTargetAndDrive was interrupted"); }
     if (targetLossTimeout > Constants.Values.VISION_TIMEOUT) { System.out.println("AutoFaceTargetAndDrive lost vision target for " + targetLossTimeout + "ms"); }
-    else { System.out.println("AutoFaceTargetAndDrive ended on target."); }
-    System.out.println("AutoFaceTargetAndDrive ended on cycle " + Robot.cycles + ", and was onTarget for " + onTargetTime);
+    else { System.out.println("AutoFaceTargetAndDrive ended on target.");
     LimeLight.getInstance().setDouble(LimeLight.LED_MODE, LimeLight.LEDState.ForceOff);
   }
 

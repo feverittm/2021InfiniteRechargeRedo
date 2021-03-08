@@ -7,9 +7,9 @@ import com.ctre.phoenix.motorcontrol.TalonFXFeedbackDevice;
 import com.ctre.phoenix.motorcontrol.can.TalonFX;
 import com.ctre.phoenix.motorcontrol.can.TalonSRX;
 
-import org.team997coders.spartanlib.controllers.SpartanPID;
-import org.team997coders.spartanlib.math.Vector2;
-import org.team997coders.spartanlib.swerve.module.SwerveModule;
+import frc.spartanlib.controllers.SpartanPID;
+import frc.spartanlib.math.Vector2;
+import frc.spartanlib.swerve.module.SwerveModule;
 
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.util.Gains;
@@ -18,13 +18,14 @@ public class TeslaModule extends SwerveModule<SpartanPID, TalonSRX, TalonFX> {
 
   public boolean enabled = true;
 
-// Milliseconds until I start complaining
+  // Milliseconds until I start complaining
   private final double ALIGNMENT_TOLERANCE = 2.5; // Tolerance in degrees
 
   private double mLastUpdate = Double.NaN;
   private double mLastGoodAlignment;
 
-  public TeslaModule(int pID, int pAziID, int pDriID, int pEncoderID, double pEncoderZero, Gains pAziConsts, Gains pDriConsts) {
+  public TeslaModule(int pID, int pAziID, int pDriID, int pEncoderID, double pEncoderZero, Gains pAziConsts,
+      Gains pDriConsts) {
     super(pID, pEncoderID, pEncoderZero);
 
     mAzimuth = new TalonSRX(pAziID);
@@ -47,14 +48,18 @@ public class TeslaModule extends SwerveModule<SpartanPID, TalonSRX, TalonFX> {
 
   @Override
   protected void setAzimuthSpeed(double pSpeed) {
-    if (enabled) mAzimuth.set(ControlMode.PercentOutput, pSpeed);
-    else mAzimuth.set(ControlMode.PercentOutput, 0.0);
+    if (enabled)
+      mAzimuth.set(ControlMode.PercentOutput, pSpeed);
+    else
+      mAzimuth.set(ControlMode.PercentOutput, 0.0);
   }
 
   @Override
   protected void setDriveSpeed(double pSpeed) {
-    if (enabled) mDrive.set(ControlMode.PercentOutput, pSpeed);
-    else mDrive.set(ControlMode.PercentOutput, 0.0);
+    if (enabled)
+      mDrive.set(ControlMode.PercentOutput, pSpeed);
+    else
+      mDrive.set(ControlMode.PercentOutput, 0.0);
   }
 
   @Override
@@ -75,7 +80,8 @@ public class TeslaModule extends SwerveModule<SpartanPID, TalonSRX, TalonFX> {
 
   @Override
   public void setDriveBrakeMode(boolean pMode) {
-    if (pMode) mDrive.setNeutralMode(NeutralMode.Brake);
+    if (pMode)
+      mDrive.setNeutralMode(NeutralMode.Brake);
     mDrive.setNeutralMode(NeutralMode.Coast);
   }
 
@@ -86,17 +92,20 @@ public class TeslaModule extends SwerveModule<SpartanPID, TalonSRX, TalonFX> {
 
     double deltaT = 0.0;
     double now = System.currentTimeMillis();
-    if (Double.isFinite(mLastUpdate)) deltaT = (now - mLastUpdate) * 1000;
+    if (Double.isFinite(mLastUpdate))
+      deltaT = (now - mLastUpdate) * 1000;
     mLastUpdate = now;
     // System.out.println("DeltaT: " + deltaT);
 
     double adjustedTheta = getAngle();
-    while (adjustedTheta < mTargetAngle - 180) adjustedTheta += 360;
-    while (adjustedTheta >= mTargetAngle + 180) adjustedTheta -= 360;
+    while (adjustedTheta < mTargetAngle - 180)
+      adjustedTheta += 360;
+    while (adjustedTheta >= mTargetAngle + 180)
+      adjustedTheta -= 360;
 
     double error = mTargetAngle - adjustedTheta;
     SmartDashboard.putNumber("Swerve/[" + mID + "]/Module Error", error);
-    
+
     double output = mAzimuthController.WhatShouldIDo(adjustedTheta, deltaT);
     SmartDashboard.putNumber("Swerve/[" + mID + "]/Module Spin Speed", output);
     setAzimuthSpeed(output);
