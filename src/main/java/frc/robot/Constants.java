@@ -40,7 +40,6 @@ public final class Constants {
       INTAKE_SOLENOID = 3,
 
       //Hopper things
-      HOPPER_MOTOR_TOP = 6,
       HOPPER_MOTOR_BOTTOM = 5,
 
       INTAKE_IR = 0,
