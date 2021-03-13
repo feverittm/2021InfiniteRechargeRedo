@@ -1,98 +1,174 @@
-// Copyright (c) FIRST and other WPILib contributors.
-// Open Source Software; you can modify and/or share it under the terms of
-// the WPILib BSD license file in the root directory of this project.
-
 package frc.robot;
 
-import edu.wpi.first.wpilibj.TimedRobot;
-import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.CommandScheduler;
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.Set;
+
+import frc.spartanlib.controllers.SpartanPID;
+import frc.spartanlib.helpers.PIDConstants;
+import frc.spartanlib.helpers.SwerveMixerData;
 import frc.spartanlib.helpers.threading.SpartanRunner;
+import frc.spartanlib.motion.pathfollower.PathManager;
+import frc.spartanlib.motion.pathfollower.data.PathData;
 
-/**
- * The VM is configured to automatically run this class, and to call the functions corresponding to
- * each mode, as described in the TimedRobot documentation. If you change the name of this class or
- * the package after creating this project, you must also update the build.gradle file in the
- * project.
- */
+import edu.wpi.first.networktables.NetworkTable;
+import edu.wpi.first.networktables.NetworkTableEntry;
+import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.wpilibj.TimedRobot;
+import edu.wpi.first.wpilibj2.command.*;
+import edu.wpi.first.wpilibj.smartdashboard.*;
+import frc.robot.commands.auto.*;
+import frc.robot.commands.drivetrain.*;
+import frc.robot.commands.hopper.*;
+
+import frc.robot.commands.shooter.ShootBadly;
+import frc.robot.subsystems.*;
+
 public class Robot extends TimedRobot {
-  private Command m_autonomousCommand;
 
-  private RobotContainer m_robotContainer;
-  public static boolean verbose = false;
   public static SpartanRunner mRunner = new SpartanRunner(20);
 
-  /**
-   * This function is run when the robot is first started up and should be used for any
-   * initialization code.
-   */
+  private static double lastUpdate = 0.0;
+  public static double initAngle = 0.0;
+  private ArrayList<String> commandList;
+
+  public static long cycles = 0;
+  public static final boolean verbose = false; // debug variable, set to true for command logging in the console and
+                                               // non-essential smartdashboard bits.
+
+  private Command m_autonomousCommand;
+  private Command mHopperCommand;
+  public static boolean autoLoadHopper = false;
+
+  Command autonomousCommand;
+  SendableChooser<Command> m_chooser = new SendableChooser<>();
+
   @Override
   public void robotInit() {
-    // Instantiate our RobotContainer.  This will perform all our button bindings, and put our
-    // autonomous chooser on the dashboard.
-    m_robotContainer = new RobotContainer();
+
+    // CameraServer.getInstance().startAutomaticCapture(0);
+    requestPaths();
+
+    CommandScheduler.getInstance().cancelAll();
+
+    m_chooser.setDefaultOption("Do Nothing", new AutoDoNothing());
+    m_chooser.addOption("Auto One", new FollowPath("TrenchPivot", false));
+
+    Shooter.getInstance();
+    Hopper.getInstance();
+    DriveTrain.getInstance();
+    DriveTrain.getInstance().setDefaultCommand(new SwerveMixer());
+
+    OI.getInstance();
+
+    commandList = new ArrayList<String>();
+    if (verbose) {
+      CommandScheduler.getInstance().onCommandExecute(command -> {
+        commandList.add(command.getName());
+      });
+    }
+
+    SmartDashboard.putData(m_chooser);
+    SmartDashboard.putNumber("Driver/Set Initial Angle", 0.0); // set the init angle of the robot in disabled with this.
+                                                               // 0 is straight forwards.
+
+    mHopperCommand = new HopperAutoIndex();
   }
 
-  /*
-   * This function is called every robot packet, no matter the mode. Use this for items like
-   * diagnostics that you want ran during disabled, autonomous, teleoperated and test.
-   *
-   * <p>This runs after the mode specific periodic functions, but before LiveWindow and
-   * SmartDashboard integrated updating.
-   */
   @Override
   public void robotPeriodic() {
-    // Runs the Scheduler.  This is responsible for polling buttons, adding newly-scheduled
-    // commands, running already-scheduled commands, removing finished or interrupted commands,
-    // and running subsystem periodic() methods.  This must be called from the robot's periodic
-    // block in order for anything in the Command-based framework to work.
-    CommandScheduler.getInstance().run();
+
+    if (verbose) {
+      if (commandList.size() > 0) {
+        for (String cmdName : commandList) {
+          System.out.println("Ran " + cmdName + " on cycle " + cycles);
+        }
+      }
+    }
+    commandList.clear();
+    cycles++;
+
+    lastUpdate = getCurrentSeconds();
+
+    OI.getInstance().update();
   }
 
-  /** This function is called once each time the robot enters Disabled mode. */
   @Override
-  public void disabledInit() {}
+  public void disabledInit() {
+
+    DriveTrain.getInstance().setCoast();
+
+    LimeLight.getInstance().setDouble(LimeLight.LED_MODE, LimeLight.LEDState.ForceOff);
+    Intake.getInstance().setPiston(false);
+
+    if (mHopperCommand != null)
+      mHopperCommand.cancel();
+    mHopperCommand = new HopperAutoIndex();
+  }
 
   @Override
-  public void disabledPeriodic() {}
+  public void disabledPeriodic() {
+    CommandScheduler.getInstance().run();
 
-  /** This autonomous runs the autonomous command selected by your {@link RobotContainer} class. */
+    Hopper.getInstance().updateBallCount();
+    initAngle = NetworkTableInstance.getDefault().getTable("SmartDashboard").getEntry("Driver/Set Init Angle")
+        .getDouble(0.0);
+  }
+
   @Override
   public void autonomousInit() {
-    m_autonomousCommand = m_robotContainer.getAutonomousCommand();
+    m_autonomousCommand = m_chooser.getSelected();
 
-    // schedule the autonomous command (example)
     if (m_autonomousCommand != null) {
       m_autonomousCommand.schedule();
     }
   }
 
-  /** This function is called periodically during autonomous. */
   @Override
-  public void autonomousPeriodic() {}
+  public void autonomousPeriodic() {
+    CommandScheduler.getInstance().run();
+  }
 
   @Override
   public void teleopInit() {
-    // This makes sure that the autonomous stops running when
-    // teleop starts running. If you want the autonomous to
-    // continue until interrupted by another command, remove
-    // this line or comment it out.
+
+    DriveTrain.getInstance().setBrake();
+
     if (m_autonomousCommand != null) {
       m_autonomousCommand.cancel();
     }
+
+    mHopperCommand.schedule();
   }
 
-  /** This function is called periodically during operator control. */
   @Override
-  public void teleopPeriodic() {}
+  public void teleopPeriodic() {
+    CommandScheduler.getInstance().run();
+  }
 
   @Override
   public void testInit() {
-    // Cancels all running commands at the start of test mode.
     CommandScheduler.getInstance().cancelAll();
   }
 
-  /** This function is called periodically during test mode. */
+  public void requestPaths() {
+    for (Map.Entry<String, PathData> entry : Constants.PathFollower.PATH_DATA.entrySet()) {
+      PathManager.getInstance().queueData(entry.getValue());
+    }
+  }
+
   @Override
-  public void testPeriodic() {}
+  public void testPeriodic() {
+  }
+
+  public static double getDeltaT() {
+    return getCurrentSeconds() - lastUpdate;
+  }
+
+  public static double getCurrentSeconds() {
+    return System.currentTimeMillis() / 1000.0;
+  }
+
 }
